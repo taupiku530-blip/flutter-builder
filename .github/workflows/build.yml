@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       download_url:
-        description: 'URL download project zip'
+        description: 'URL download project zip (Catbox)'
         required: true
       chat_id:
         description: 'Telegram chat ID'
@@ -16,27 +16,40 @@ jobs:
     steps:
       - name: Download project
         run: wget -O project.zip "${{ github.event.inputs.download_url }}"
-      - name: Extract
+      
+      - name: Extract project
         run: unzip project.zip -d project
-      - name: Setup Flutter
+      
+      - name: Setup Flutter (Stable Terbaru)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.x'
-      - name: Install dependencies
+          flutter-version: 'stable'
+          channel: 'stable'
+      
+      - name: Check Flutter & Dart version
+        run: |
+          flutter --version
+          dart --version
+      
+      - name: Get dependencies
         working-directory: ./project
         run: flutter pub get
+      
       - name: Build APK
         working-directory: ./project
         run: flutter build apk --release
-      - name: Upload APK to catbox
+      
+      - name: Upload APK to Catbox
         id: upload
         run: |
           APK_PATH="./project/build/app/outputs/flutter-apk/app-release.apk"
           URL=$(curl -F "file=@$APK_PATH" https://catbox.moe/user/api.php)
           echo "apk_url=$URL" >> $GITHUB_OUTPUT
+          echo "✅ APK uploaded: $URL"
+      
       - name: Send APK link to Telegram
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d chat_id=${{ github.event.inputs.chat_id }} \
-            -d text="✅ *Build APK selesai!* 🚀\n\n📱 Download APK: ${{ steps.upload.outputs.apk_url }}" \
+            -d text="✅ *Build APK selesai!* 🚀\n\n📱 Download APK: ${{ steps.upload.outputs.apk_url }}\n\n🔧 *Info:*\n- Flutter stable terbaru\n- Dart SDK terbaru\n\nBuild otomatis oleh GitHub Actions" \
             -d parse_mode=Markdown
