@@ -20,9 +20,11 @@ jobs:
       - name: Extract project
         run: unzip project.zip -d project
       
-      - name: Install Flutter manually (3.22.4)
+      - name: Install Flutter 3.22.4 (pake tag)
         run: |
-          git clone https://github.com/flutter/flutter.git --depth 1 --branch 3.22.4 $HOME/flutter
+          git clone https://github.com/flutter/flutter.git --depth 1 --branch stable $HOME/flutter
+          cd $HOME/flutter
+          git checkout 3.22.4
           echo "$HOME/flutter/bin" >> $GITHUB_PATH
       
       - name: Check Flutter & Dart version
