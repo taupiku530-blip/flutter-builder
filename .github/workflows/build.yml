@@ -1,0 +1,42 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'URL download project zip'
+        required: true
+      chat_id:
+        description: 'Telegram chat ID'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download project
+        run: wget -O project.zip "${{ github.event.inputs.download_url }}"
+      - name: Extract
+        run: unzip project.zip -d project
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.x'
+      - name: Install dependencies
+        working-directory: ./project
+        run: flutter pub get
+      - name: Build APK
+        working-directory: ./project
+        run: flutter build apk --release
+      - name: Upload APK to catbox
+        id: upload
+        run: |
+          APK_PATH="./project/build/app/outputs/flutter-apk/app-release.apk"
+          URL=$(curl -F "file=@$APK_PATH" https://catbox.moe/user/api.php)
+          echo "apk_url=$URL" >> $GITHUB_OUTPUT
+      - name: Send APK link to Telegram
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
+            -d chat_id=${{ github.event.inputs.chat_id }} \
+            -d text="✅ *Build APK selesai!* 🚀\n\n📱 Download APK: ${{ steps.upload.outputs.apk_url }}" \
+            -d parse_mode=Markdown
