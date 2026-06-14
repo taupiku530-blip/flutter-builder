@@ -1,4 +1,4 @@
-name: Build Flutter APK
+        name: Build Flutter APK
 
 on:
   workflow_dispatch:
@@ -20,18 +20,23 @@ jobs:
       - name: Extract project
         run: unzip project.zip -d project
       
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.4'
+      - name: Install Flutter manually (via git)
+        run: |
+          git clone https://github.com/flutter/flutter.git --depth 1 $HOME/flutter
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+      
+      - name: Check Flutter & Dart version
+        run: |
+          $HOME/flutter/bin/flutter --version
+          $HOME/flutter/bin/dart --version
       
       - name: Get dependencies
         working-directory: ./project
-        run: flutter pub get
+        run: $HOME/flutter/bin/flutter pub get
       
       - name: Build APK
         working-directory: ./project
-        run: flutter build apk --release
+        run: $HOME/flutter/bin/flutter build apk --release
       
       - name: Upload APK to gofile.io
         id: upload
@@ -51,5 +56,5 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d chat_id=${{ github.event.inputs.chat_id }} \
-            -d text="✅ *Build APK selesai!* 🚀\n\n📱 Download APK: ${{ steps.upload.outputs.apk_url }}\n\n🔧 Info:\n- Flutter 3.22.4\n- APK diupload ke gofile.io" \
+            -d text="✅ *Build APK selesai!* 🚀\n\n📱 Download APK: ${{ steps.upload.outputs.apk_url }}\n\n🔧 Info:\n- Flutter stable terbaru\n- APK diupload ke gofile.io" \
             -d parse_mode=Markdown
