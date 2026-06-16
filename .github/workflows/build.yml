@@ -7,52 +7,34 @@ on:
         description: 'URL download project zip (Catbox)'
         required: true
       chat_id:
-        description: 'Telegram chat ID'
-        required: true
+        description: 'Telegram chat ID (opsional)'
+        required: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Download project
+      - name: Download project from Catbox
         run: wget -O project.zip "${{ github.event.inputs.download_url }}"
-      
+
       - name: Extract project
         run: unzip project.zip -d project
-      
-      - name: Install Flutter (stable)
-        run: |
-          git clone https://github.com/flutter/flutter.git --depth 1 --branch stable $HOME/flutter
-          echo "$HOME/flutter/bin" >> $GITHUB_PATH
-      
-      - name: Check version
-        run: |
-          flutter --version
-          dart --version
-      
+
+      - name: Setup Flutter 3.22.4 (Dart 3.8.5)
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.4'
+
       - name: Get dependencies
         working-directory: ./project
         run: flutter pub get
-      
-      - name: Build APK
+
+      - name: Build APK release
         working-directory: ./project
         run: flutter build apk --release
-      
-      - name: Upload APK to gofile.io
-        id: upload
-        run: |
-          APK_PATH="./project/build/app/outputs/flutter-apk/app-release.apk"
-          RESPONSE=$(curl -s -F "file=@$APK_PATH" https://store1.gofile.io/uploadFile)
-          URL=$(echo $RESPONSE | grep -o '"downloadPage":"[^"]*' | cut -d '"' -f 4)
-          if [ -z "$URL" ]; then
-            echo "ERROR: Gagal upload ke gofile.io"
-            exit 1
-          fi
-          echo "apk_url=$URL" >> $GITHUB_OUTPUT
-      
-      - name: Send APK link to Telegram
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d chat_id=${{ github.event.inputs.chat_id }} \
-            -d text="✅ *Build APK selesai!* 🚀\n\n📱 Download APK: ${{ steps.upload.outputs.apk_url }}\n\n🔧 Info:\n- Flutter stable\n- APK diupload ke gofile.io" \
-            -d parse_mode=Markdown
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: ./project/build/app/outputs/flutter-apk/app-release.apk
